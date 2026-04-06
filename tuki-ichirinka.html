@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>一輪花 Typing V6</title>
+<link href="https://fonts.googleapis.com/css2?family=Noto+Serif+JP:wght@300;400;700&family=Inconsolata:wght@300;400;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  :root {
+    --bg: #0d0d12; --surface: #13131a; --card: #1a1a24; --border: rgba(255,255,255,0.07);
+    --accent: #e8a4c0; --accent2: #7dd3b0; --text: #e8e4dc; --muted: rgba(232,228,220,0.38);
+    --error: #e87070; --done: #7dd3b0;
+  }
+  html, body { height: 100%; background: var(--bg); color: var(--text); font-family: 'Noto Serif JP', serif; overflow: hidden; }
+  .petals-canvas { position: fixed; inset: 0; pointer-events: none; z-index: 0; overflow: hidden; }
+  .petal { position: absolute; top: -40px; width: 8px; height: 12px; border-radius: 50% 50% 50% 0; background: var(--accent); opacity: 0; animation: fall linear infinite; }
+  @keyframes fall {
+    0% { opacity: 0; transform: translateX(0) rotate(0deg); top: -40px; }
+    10% { opacity: 0.18; } 90% { opacity: 0.12; } 100% { opacity: 0; transform: translateX(80px) rotate(360deg); top: 110vh; }
+  }
+  #app { position: relative; z-index: 1; width: 100vw; height: 100vh; display: flex; flex-direction: column; align-items: center; justify-content: center; padding: 20px; }
+  .game-header { text-align: center; margin-bottom: 15px; }
+  .song-title { font-size: clamp(22px, 4vw, 36px); font-weight: 700; letter-spacing: 0.18em; color: var(--accent); text-shadow: 0 0 40px rgba(232,164,192,0.35); }
+  
+  .audio-section { margin-bottom: 15px; display: flex; align-items: center; gap: 12px; background: var(--card); border: 1px solid var(--border); border-radius: 12px; padding: 8px 18px; }
+  .audio-section label { font-size: 11px; color: var(--muted); font-family: 'Inconsolata', monospace; }
+  .audio-section input[type="text"] { background: rgba(255,255,255,0.05); border: 1px solid var(--border); border-radius: 6px; color: var(--text); font-family: 'Inconsolata', monospace; font-size: 12px; padding: 5px 10px; width: 180px; outline: none; }
+  .load-btn { background: var(--accent); color: #1a0d12; border: none; border-radius: 6px; padding: 6px 14px; font-size: 11px; font-family: 'Inconsolata', monospace; cursor: pointer; font-weight: 600; }
+  audio { height: 28px; filter: invert(1) hue-rotate(180deg) brightness(0.7); }
+
+  .section-nav { display: flex; gap: 8px; margin-bottom: 20px; flex-wrap: wrap; justify-content: center; align-items: center; }
+  .jump-btn { background: rgba(255,255,255,0.05); color: var(--accent); border: 1px solid var(--border); border-radius: 20px; padding: 5px 14px; font-size: 12px; cursor: pointer; transition: 0.3s; }
+  .jump-btn:hover { background: var(--accent); color: #1a0d12; }
+  .step-btn { background: rgba(125,211,176,0.1); color: var(--accent2); border-color: rgba(125,211,176,0.2); font-weight: 600; }
+  .step-btn:hover { background: var(--accent2); color: #0d1210; }
+
+  .stats-bar { display: flex; gap: 24px; margin-bottom: 20px; font-family: 'Inconsolata', monospace; }
+  .stat { display: flex; flex-direction: column; align-items: center; gap: 2px; }
+  .stat-val { font-size: 22px; font-weight: 600; color: var(--accent); }
+  .stat-label { font-size: 10px; color: var(--muted); letter-spacing: 0.15em; text-transform: uppercase; }
+  .stat-sep { width: 1px; background: var(--border); align-self: stretch; margin: 4px 0; }
+
+  .game-card { width: min(850px, 100%); background: var(--card); border: 1px solid var(--border); border-radius: 20px; padding: 35px 40px; box-shadow: 0 32px 80px rgba(0,0,0,0.5); position: relative; overflow: hidden; }
+  .current-line { text-align: center; margin-bottom: 20px; position: relative; }
+  .control-btns { display: flex; align-items: center; justify-content: center; gap: 10px; margin-right: 15px; }
+  .play-line-btn { display: inline-flex; align-items: center; justify-content: center; width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(232,164,192,0.3); cursor: pointer; transition: all 0.2s; font-size: 14px; background: rgba(232,164,192,0.15); color: var(--accent); }
+  .play-line-btn:hover { background: var(--accent); color: #1a0d12; transform: scale(1.1); }
+
+  .lyric-container { display: flex; align-items: center; justify-content: center; margin-bottom: 15px; }
+  .lyric-ruby { display: inline-flex; flex-wrap: wrap; align-items: flex-end; justify-content: center; font-size: clamp(24px, 4.5vw, 40px); line-height: 1.2; }
+  .ruby-unit { display: inline-flex; flex-direction: column; align-items: center; justify-content: flex-end; }
+  .ruby-unit .rt { font-size: 11px; color: var(--accent); line-height: 1; margin-bottom: 3px; min-height: 14px; opacity: 0.85; }
+  .ruby-unit .rb { font-size: inherit; font-weight: 700; color: var(--text); letter-spacing: 0.02em; }
+  .translation-always { font-size: 15px; color: var(--accent2); margin-top: 10px; font-style: italic; opacity: 0.9; letter-spacing: 0.05em; min-height: 22px; }
+  .romaji-display { text-align: center; font-family: 'Inconsolata', monospace; font-size: clamp(16px, 2.5vw, 22px); letter-spacing: 0.08em; color: var(--muted); min-height: 32px; word-break: break-all; margin-top: 10px; }
+  .rom-done { color: var(--done); }
+  .rom-cursor { color: var(--accent); border-bottom: 2px solid var(--accent); animation: blink 0.9s step-end infinite; }
+  @keyframes blink { 0%,100%{opacity:1} 50%{opacity:0} }
+  .input-area { margin-top: 25px; position: relative; }
+  .type-input { width: 100%; background: rgba(255,255,255,0.04); border: 1.5px solid rgba(255,255,255,0.1); border-radius: 10px; padding: 14px 20px; font-family: 'Inconsolata', monospace; font-size: 18px; color: var(--text); outline: none; transition: 0.2s; }
+  .type-input.error { border-color: var(--error) !important; animation: shake 0.3s ease; }
+  @keyframes shake { 0%,100%{transform:translateX(0)} 20%,60%{transform:translateX(-5px)} 40%,80%{transform:translateX(5px)} }
+  .progress-bar { display: flex; justify-content: center; gap: 4px; margin-top: 20px; flex-wrap: wrap; max-width: 800px; }
+  .prog-dot { width: 5px; height: 5px; border-radius: 50%; background: var(--border); transition: 0.4s; }
+  .prog-dot.done { background: var(--done); }
+  .prog-dot.active { background: var(--accent); transform: scale(1.4); }
+  .complete-screen { display: none; flex-direction: column; align-items: center; text-align: center; }
+  .complete-screen.show { display: flex; }
+  .gameplay.hidden { display: none; }
+</style>
+</head>
+<body>
+<div class="petals-canvas" id="petals"></div>
+<div id="app">
+  <div class="game-header"><div class="song-title">一 輪 花</div></div>
+  <div class="audio-section">
+    <label>MEDIA SOURCE</label>
+    <input type="text" id="audioFilename" value="tuki-ichirinka.mp3" />
+    <button class="load-btn" onclick="loadAudio()">Load</button>
+    <audio id="audioPlayer" controls></audio>
+  </div>
+  <div class="stats-bar">
+    <div class="stat"><div class="stat-val" id="statTime">0:00</div><div class="stat-label">Time</div></div>
+    <div class="stat-sep"></div>
+    <div class="stat"><div class="stat-val" id="statWPM">0</div><div class="stat-label">WPM</div></div>
+    <div class="stat-sep"></div>
+    <div class="stat"><div class="stat-val" id="statAcc">--%</div><div class="stat-label">Acc</div></div>
+    <div class="stat-sep"></div>
+    <div class="stat"><div class="stat-val" id="statLines">0</div><div class="stat-label">Lines</div></div>
+  </div>
+  <div class="section-nav">
+    <button class="jump-btn step-btn" onclick="prevLine()">⏮ Prev</button>
+    <button class="jump-btn" onclick="jumpTo(0)">Section 1</button>
+    <button class="jump-btn" onclick="jumpTo(10)">Chorus A</button>
+    <button class="jump-btn" onclick="jumpTo(21)">Section 2</button>
+    <button class="jump-btn" onclick="jumpTo(31)">Chorus B</button>
+    <button class="jump-btn" onclick="jumpTo(42)">Ending</button>
+    <button class="jump-btn step-btn" onclick="nextLine()">Next ⏭</button>
+  </div>
+  <div class="game-card">
+    <div class="gameplay" id="gameplay">
+      <div class="current-line">
+        <div class="lyric-container">
+          <div class="control-btns"><button class="play-line-btn" onclick="playCurrentSegment()" title="Replay line">⏵</button></div>
+          <div class="lyric-ruby" id="lyricRuby"></div>
+        </div>
+        <div class="translation-always" id="transAlways"></div>
+      </div>
+      <div class="romaji-display" id="romajiDisplay"></div>
+      <div class="input-area"><input type="text" class="type-input" id="typeInput" autocomplete="off" placeholder="type romaji here..." /></div>
+    </div>
+    <div class="complete-screen" id="completeScreen"><h2 style="color:var(--accent)">COMPLETE</h2><button class="load-btn" onclick="location.reload()" style="margin-top:20px">Restart</button></div>
+  </div>
+  <div class="progress-bar" id="progressBar"></div>
+</div>
+
+<script>
+// Time derived from time.txt and converted to seconds with milliseconds accuracy
+const LYRICS = [
+  { start: 0, ruby: [{rb:'誰',rt:'だれ'},'かのために',{rb:'歩',rt:'ある'},'いていたから'], romaji: 'dareka no tame ni aruite ita kara', translation: '因為一直都是為了某個人而走著' },
+  { start: 8, ruby: [{rb:'気',rt:'き'},'付けなかった'], romaji: 'kidzuke nakatta', translation: '所以沒能察覺到' },
+  { start: 11, ruby: [{rb:'私',rt:'わたし'},'のために',{rb:'歩',rt:'ある'},'いても'], romaji: 'watashi no tame ni aruite mo', translation: '即使是為自己而走' },
+  { start: 17, ruby: [{rb:'構',rt:'かま'},'わないって',{rb:'気',rt:'き'},'付いた'], romaji: 'kamawanai tte kidzuita', translation: '才發現其實也沒關係' },
+  { start: 22, ruby: ['いついつまでもあなたを'], romaji: 'itsu itsu made mo anata o', translation: '無論到何時都還是你' },
+  { start: 26, ruby: [{rb:'忘',rt:'わす'},'れられないなんて',{rb:'嫌',rt:'きら'},'いだよ'], romaji: 'wasurerarenai nante iya da yo', translation: '無法忘記這種事真的很討厭' },
+  { start: 31, ruby: [{rb:'望',rt:'のぞ'},'んでたんだ'], romaji: 'nozonde ta n da', translation: '曾經這樣期望著' },
+  { start: 33, ruby: [{rb:'凛',rt:'りん'},'と',{rb:'立',rt:'た'},'つ ',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'rinto tatsu ichirinka', translation: '能像一朵凜然綻放的花一樣' },
+  { start: 36, ruby: [{rb:'元',rt:'もと'},'に',{rb:'戻',rt:'もど'},'るだけさ'], romaji: 'moto ni modoru dake sa', translation: '但最後還是回到原點' },
+  { start: 41.5, ruby: ['さよなら'], romaji: 'sayonara', translation: '再見' },
+  { start: 42, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'が',{rb:'雨',rt:'あめ'},'に',{rb:'変',rt:'か'},'わる'], romaji: 'saidai-kyu no ai ga ame ni kawaru', translation: '最深的愛化作雨水' },
+  { start: 47, ruby: [{rb:'会',rt:'あ'},'えないバイバイなんてあの',{rb:'日',rt:'ひ'}], romaji: 'aenai baibai nante ano hi', translation: '那天說出的「再也見不到的再見」' },
+  { start: 51.5, ruby: [{rb:'思',rt:'おも'},'わなかった'], romaji: 'omowanakatta', translation: '是我從未預料到的' },
+  { start: 54, ruby: [{rb:'風',rt:'かぜ'},'に',{rb:'揺',rt:'ゆ'},'らぐ ',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'kaze ni yuragu ichirinka', translation: '像在風中搖曳的一朵花' },
+  { start: 57, ruby: [{rb:'飛',rt:'と'},'ばされないように'], romaji: 'tobasarenai yo ni', translation: '為了不被吹走' },
+  { start: 62, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'を'], romaji: 'saidai-kyu no ai o', translation: '將這份最深的愛' },
+  { start: 64.5, ruby: [{rb:'会',rt:'あ'},'いたいよって',{rb:'居',rt:'い'},'ないよ'], romaji: 'aitai yo tte inai yo', translation: '說著「好想見你」卻已不在' },
+  { start: 107, ruby: [{rb:'会',rt:'あ'},'えばきっと',{rb:'痛',rt:'いた'},'いよ ',{rb:'痛',rt:'いた'},'いよ ',{rb:'痛',rt:'いた'},'いよ'], romaji: 'aeba kitto itai yo itai yo itai yo', translation: '如果再見一定會很痛 很痛 很痛' },
+  { start: 112, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'と'], romaji: 'saidai-kyu no ai to', translation: '這份最深的愛與' },
+  { start: 114.5, ruby: [{rb:'朝',rt:'あさ'},{rb:'露',rt:'つゆ'},'に',{rb:'濡',rt:'ぬ'},'れた'], romaji: 'asa tsuyu ni nureta', translation: '被晨露浸濕的我' },
+  { start: 118, ruby: [{rb:'私',rt:'わたし'},'は',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'watashi wa ichirinka', translation: '化作一朵花' },
+  { start: 131, ruby: [{rb:'明日',rt:'あした'},'のために',{rb:'歩',rt:'ある'},'き',{rb:'出',rt:'だ'},'そうとは'], romaji: 'ashita no tame ni aruki dasou to wa', translation: '曾經想著要為了明天而前進' },
+  { start: 139.5, ruby: [{rb:'思',rt:'おも'},'ってたんだ'], romaji: 'omotteta n da', translation: '是這樣想過的' },
+  { start: 142, ruby: [{rb:'思',rt:'おも'},'い',{rb:'出',rt:'出'},'ばかり',{rb:'眺',rt:'なが'},'めては'], romaji: 'omoide bakari nagamete wa', translation: '卻總是看著回憶' },
+  { start: 148, ruby: [{rb:'今日',rt:'きょう'},'じゃなくって',{rb:'良',rt:'い'},'いって'], romaji: 'kyo janakutte ii tte', translation: '告訴自己「今天也可以再等等」' },
+  { start: 153, ruby: [{rb:'今',rt:'いま'},'が',{rb:'続',rt:'續'},'けばいいよと'], romaji: 'ima ga tsudzukeba ii yo to', translation: '只要現在能持續就好' },
+  { start: 158, ruby: ['あの',{rb:'時',rt:'とき'},'は',{rb:'思',rt:'おも'},'えていたけど'], romaji: 'ano toki wa omoete ita kedo', translation: '當時確實是這麼想的' },
+  { start: 162, ruby: [{rb:'変',rt:'か'},'わっていくんだ'], romaji: 'kawatte iku n da', translation: '但一切正在改變' },
+  { start: 165, ruby: [{rb:'凛',rt:'りん'},'と',{rb:'立',rt:'た'},'つ ',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'rinto tatsu ichirinka', translation: '堅定地站著 像一朵花' },
+  { start: 167, ruby: [{rb:'咲',rt:'さ'},'き',{rb:'続',rt:'續'},'けるために'], romaji: 'saki tsudzukeru tame ni', translation: '為了持續綻放' },
+  { start: 172, ruby: ['さよなら'], romaji: 'sayonara', translation: '再見' },
+  { start: 174, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'が',{rb:'雨',rt:'あめ'},'に',{rb:'変',rt:'か'},'わる'], romaji: 'saidai-kyu no ai ga ame ni kawaru', translation: '最深的愛化作雨水' },
+  { start: 179, ruby: [{rb:'会',rt:'あ'},'えないバイバイなんてあの',{rb:'日',rt:'ひ'}], romaji: 'aenai baibai nante ano hi', translation: '那天說出的再也見不到的再見' },
+  { start: 183, ruby: [{rb:'思',rt:'おも'},'わなかった'], romaji: 'omowanakatta', translation: '是我沒想到的' },
+  { start: 185, ruby: [{rb:'風',rt:'かぜ'},'に',{rb:'揺',rt:'ゆ'},'らぐ ',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'kaze ni yuragu ichirinka', translation: '在風中搖曳的一朵花' },
+  { start: 188, ruby: [{rb:'飛',rt:'と'},'ばされないように'], romaji: 'tobasarenai yo ni', translation: '為了不被吹走' },
+  { start: 193, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'愛'},'を'], romaji: 'saidai-kyu no ai o', translation: '將這份最深的愛' },
+  { start: 196, ruby: [{rb:'会',rt:'あ'},'いたいよって',{rb:'居',rt:'い'},'ないよ'], romaji: 'aitai yo tte inai yo', translation: '說著想見你卻已不在' },
+  { start: 198.5, ruby: [{rb:'会',rt:'あ'},'えばきっと',{rb:'痛',rt:'いた'},'いよ ',{rb:'痛',rt:'いた'},'いよ ',{rb:'痛',rt:'いた'},'いよ'], romaji: 'aeba kitto itai yo itai yo itai yo', translation: '如果見面一定會很痛' },
+  { start: 203, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'と'], romaji: 'saidai-kyu no ai to', translation: '這份最深的愛與' },
+  { start: 206, ruby: [{rb:'朝',rt:'あさ'},{rb:'露',rt:'つゆ'},'に',{rb:'濡',rt:'ぬ'},'れた'], romaji: 'asa tsuyu ni nureta', translation: '被晨露沾濕的我' },
+  { start: 209, ruby: [{rb:'私',rt:'わたし'},'は',{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'watashi wa ichirinka', translation: '化作一朵花' },
+  { start: 214, ruby: ['ばいばいきっと',{rb:'居',rt:'い'},'ないよ'], romaji: 'bai bai kitto inai yo', translation: '再見了 你一定已不在' },
+  { start: 216.5, ruby: [{rb:'会',rt:'あ'},'いたいよって',{rb:'居',rt:'い'},'ないよ'], romaji: 'aitai yo tte inai yo', translation: '想見你 卻見不到' },
+  { start: 219, ruby: [{rb:'会',rt:'あ'},'えばきっと',{rb:'痛',rt:'いた'},'いよ'], romaji: 'aeba kitto itai yo', translation: '如果見面一定會痛' },
+  { start: 221.5, ruby: [{rb:'期',rt:'待',rt:'たい'},'もしないよ'], romaji: 'kitai mo shinai yo', translation: '所以我也不再期待' },
+  { start: 224.5, ruby: [{rb:'最',rt:'さい'},{rb:'大',rt:'だい'},{rb:'級',rt:'きゅう'},'の',{rb:'愛',rt:'あい'},'で'], romaji: 'saidai-kyu no ai de', translation: '用最深的愛' },
+  { start: 227, ruby: ['どしゃぶりの',{rb:'雨',rt:'あめ'},'だ'], romaji: 'doshaburi no ame da', translation: '化成傾盆大雨' },
+  { start: 230, ruby: [{rb:'泣',rt:'な'},'かないよ'], romaji: 'nakanai yo', translation: '我不會哭' },
+  { start: 231, ruby: [{rb:'一',rt:'いち'},{rb:'輪',rt:'りん'},{rb:'花',rt:'か'}], romaji: 'ichirinka', translation: '我是一朵花' }
+];
+
+let currentLine = 0, typedPos = 0, totalCorrect = 0, totalTyped = 0, startTime = null, timerInterval = null;
+
+function loadAudio() { 
+  const f = document.getElementById('audioFilename').value; 
+  if(f) document.getElementById('audioPlayer').src = f; 
+}
+
+function playCurrentSegment() { 
+  const p = document.getElementById('audioPlayer'); 
+  if(p.src){ 
+    p.currentTime = LYRICS[currentLine].start; 
+    p.play(); 
+    document.getElementById('typeInput').focus(); 
+  } 
+}
+
+function nextLine() { if (currentLine < LYRICS.length - 1) jumpTo(currentLine + 1); else showComplete(); }
+function prevLine() { if (currentLine > 0) jumpTo(currentLine - 1); }
+
+function jumpTo(index) {
+  if (index >= 0 && index < LYRICS.length) {
+    currentLine = index;
+    const p = document.getElementById('audioPlayer');
+    if(p.src) { p.currentTime = LYRICS[index].start; p.play(); }
+    renderLine();
+    document.getElementById('typeInput').focus();
+  }
+}
+
+function buildRubyHTML(arr) { 
+  return arr.map(i => typeof i === 'string' ? i.split('').map(c => `<span class="ruby-unit"><span class="rt"></span><span class="rb">${c}</span></span>`).join('') : `<span class="ruby-unit"><span class="rt">${i.rt}</span><span class="rb">${i.rb}</span></span>`).join(''); 
+}
+
+function updateRomajiDisplay() { 
+  const rom = LYRICS[currentLine].romaji; 
+  let h = ''; 
+  for(let i=0; i<rom.length; i++){ 
+    if(i < typedPos) h += `<span class="rom-done">${rom[i]===' '?'&nbsp;':rom[i]}</span>`; 
+    else if(i === typedPos) h += `<span class="rom-cursor">${rom[i]===' '?'&nbsp;':rom[i]}</span>`; 
+    else h += `<span>${rom[i]===' '?'&nbsp;':rom[i]}</span>`; 
+  } 
+  document.getElementById('romajiDisplay').innerHTML = h; 
+}
+
+function renderLine() { 
+  const l = LYRICS[currentLine]; 
+  document.getElementById('lyricRuby').innerHTML = buildRubyHTML(l.ruby); 
+  document.getElementById('transAlways').textContent = l.translation; 
+  typedPos = 0; updateRomajiDisplay(); updateProgressDots(); 
+}
+
+function updateProgressDots() { 
+  document.getElementById('progressBar').innerHTML = LYRICS.map((_, i) => `<div class="prog-dot ${i===currentLine?'active':(i<currentLine?'done':'')}"></div>`).join(''); 
+}
+
+document.getElementById('typeInput').addEventListener('input', function() { 
+  if(!startTime){ startTime=Date.now(); timerInterval=setInterval(updateStats,500); } 
+  let v=this.value; if(!v)return; 
+  let c=v[v.length-1].toLowerCase(); 
+  this.value=''; totalTyped++; 
+  if(c===LYRICS[currentLine].romaji[typedPos].toLowerCase()){ 
+    typedPos++; totalCorrect++; 
+    if(typedPos >= LYRICS[currentLine].romaji.length){ 
+      currentLine++; 
+      if(currentLine >= LYRICS.length) showComplete(); 
+      else {
+          renderLine();
+          const p = document.getElementById('audioPlayer');
+          if(p.src && !p.paused) p.currentTime = LYRICS[currentLine].start;
+      }
+    } else updateRomajiDisplay(); 
+  } else { 
+    this.classList.add('error'); 
+    setTimeout(()=>this.classList.remove('error'),300); 
+  } 
+});
+
+function updateStats() { 
+  const e = (Date.now()-startTime)/1000; 
+  document.getElementById('statTime').textContent = Math.floor(e/60)+":"+Math.floor(e%60).toString().padStart(2,'0'); 
+  document.getElementById('statWPM').textContent = Math.round((totalCorrect/5)/(e/60))||0; 
+  document.getElementById('statAcc').textContent = totalTyped > 0 ? Math.round((totalCorrect/totalTyped)*100)+"%" : "--%"; 
+  document.getElementById('statLines').textContent = currentLine; 
+}
+
+function showComplete() { clearInterval(timerInterval); document.getElementById('gameplay').classList.add('hidden'); document.getElementById('completeScreen').classList.add('show'); }
+
+window.onload = () => { loadAudio(); renderLine(); document.getElementById('typeInput').focus(); };
+
+for(let i=0; i<20; i++){ 
+  let p=document.createElement('div'); p.className='petal'; 
+  p.style.left=Math.random()*100+'%'; p.style.animationDuration=(5+Math.random()*10)+'s'; 
+  p.style.animationDelay=(-Math.random()*10)+'s'; document.getElementById('petals').appendChild(p); 
+}
+</script>
+</body>
+</html>
